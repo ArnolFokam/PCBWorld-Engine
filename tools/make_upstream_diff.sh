@@ -10,8 +10,7 @@
 #
 #   bash tools/make_upstream_diff.sh [OUT_DIR]     # default: docs/upstream-diff (run from anywhere)
 #
-# Output layout (all generated — do not edit; the check in the environment repository's
-# tools/docs/check_docs.py regenerates and byte-compares it):
+# Output layout (all generated — do not edit):
 #   OUT_DIR/README.md              what this directory is
 #   OUT_DIR/<rel>.diff             one unified diff per modified upstream file (`patch -p1` form)
 #   OUT_DIR/NEW_FILES.txt          kicad-patches/kicad/** files with no upstream counterpart

@@ -126,6 +126,13 @@ echo ""
 echo "=== Prepare patched source ==="
 mkdir -p "$BUILD_DIR"
 
+# Hash the patch tree NOW — before it is copied into the build — so the stamp written at the
+# end names the sources this build was made from, not whatever the tree holds by then (an edit
+# during the multi-minute compile must not be stamped as built). The script ships in this
+# bundle: its failure is a defect and stops the build here (set -e), instead of producing a
+# router with no stamp that every provenance check would then wave through.
+CPP_HASH="$(bash "$BUNDLE_DIR/tools/cpp_content_hash.sh" "$PATCHES_DIR")"
+
 if [ ! -d "$KICAD_SRC" ]; then
     echo "  First build: copying kicad source to build dir..."
     rsync -a "$KICAD_SRC_ORIG/" "$KICAD_SRC/"
@@ -379,15 +386,21 @@ if [ -z "$MODULE_PATH" ]; then
     exit 1
 fi
 
-# Stamp the build with the engine (patch) version so a stale .so can be detected: copy
-# the source engine-version marker next to the freshly-built module. It is a provenance
-# marker ONLY — no runtime code reads it. tests/test_engine_api/test_engine_build_version.py
-# compares this stamp against kicad-patches/ENGINE_VERSION and fails (asking for a
-# rebuild) when they diverge, which happens after a minor bump lands without a re-run here.
+# Stamp the build so a stale .so can be detected. Two provenance markers next to the freshly
+# built module, read by no runtime code; tests/test_engine_api/test_engine_build_version.py
+# compares both against the source tree and asks for a rebuild when either diverges:
+#   ENGINE_VERSION   the engine version (a copy) — catches a bump that landed without a rebuild.
+#   ENGINE_CPP_HASH  the content hash of kicad-patches/ (tools/cpp_content_hash.sh) — catches a
+#                    C++ EDIT without a rebuild, which the version alone cannot see (an edit does
+#                    not change the version). Content, not mtime: a fresh worktree restamps every
+#                    file, and a tree may point at a build made elsewhere.
+STAMP_DIR="$(dirname "$MODULE_PATH")"
 if [ -f "$PATCHES_DIR/ENGINE_VERSION" ]; then
-    cp "$PATCHES_DIR/ENGINE_VERSION" "$(dirname "$MODULE_PATH")/ENGINE_VERSION"
+    cp "$PATCHES_DIR/ENGINE_VERSION" "$STAMP_DIR/ENGINE_VERSION"
     echo "engine version: $(tr -d '[:space:]' < "$PATCHES_DIR/ENGINE_VERSION") (stamped next to module)"
 fi
+printf '%s\n' "$CPP_HASH" > "$STAMP_DIR/ENGINE_CPP_HASH"      # computed before the source copy (see "Prepare patched source")
+echo "engine C++ content: $CPP_HASH (stamped next to module)"
 
 echo ""
 echo "Usage:"

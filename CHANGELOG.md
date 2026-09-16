@@ -3,6 +3,18 @@
 Release notes for the PCBWorld Engine, newest first. This is a separate program from the
 PCBWorld environment, which pins one engine commit per environment release.
 
+## v1.0.1 — 2026-09-16
+
+Build-provenance release. Router sources unchanged since v1.0.0 — no patch, CMake or
+`kicad-python` change, wire protocol still 2 — either release routes identically.
+
+- `build_rl_router.sh` — stamps the module with `ENGINE_CPP_HASH`, the C++ patch-tree content hash,
+  taken before the source copy; a hash failure stops the build
+- `tools/cpp_content_hash.sh` (new) — the one implementation: sha256 over each source file's path
+  and bytes under `kicad-patches/`, 8 hex chars. PCBWorld refuses a mismatched stamp; a v1.0.0
+  build warns until rebuilt
+- `kicad-patches/ENGINE_VERSION` 1.3 → 1.4
+
 ## v1.0.0 — 2026-09-11
 
 First public release: KiCad 9.0.8's PNS push-and-shove router, patched and wrapped as the

@@ -26,7 +26,7 @@ tree is distributed from there.
 | [`pcbnew_prep/`](pcbnew_prep) | dataset pre-conversion scripts (`kicad_pcb` → DSN/ORP). They import KiCad's `pcbnew` Python module, so they live on this side of the boundary — the module built here with `BUILD_PCBNEW=1` (or any host KiCad's python) |
 | [`build_rl_router.sh`](build_rl_router.sh) | rsync the submodule into `build_rl/kicad_src`, drop in `kicad-patches/`, run cmake + ninja (`BUILD_CLI=1 BUILD_PCBNEW=1` add `kicad-cli` and the `pcbnew` module, see Build) |
 | [`docs/upstream-diff/`](docs/upstream-diff) | **generated, read-only**: one unified diff per modified upstream file — exactly what this engine changes in KiCad. Not a build input; regenerate with `tools/make_upstream_diff.sh` |
-| [`tools/`](tools) | `make_upstream_diff.sh` (regenerates the view above and proves it round-trips) · `diff_patches.sh` (ad-hoc diff summary against the pinned upstream) |
+| [`tools/`](tools) | `make_upstream_diff.sh` (regenerates the view above and proves it round-trips) · `diff_patches.sh` (ad-hoc diff summary against the pinned upstream) · `cpp_content_hash.sh` (content hash of `kicad-patches/`, stamped next to the built module as `ENGINE_CPP_HASH`) |
 
 ## Build
 
