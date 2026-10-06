@@ -163,6 +163,18 @@ cp -p "$PATCHES_DIR/kicad/include/properties/pg_properties.h"   "$KICAD_SRC/incl
 cp -p "$PATCHES_DIR/kicad/include/kiid.h"                       "$KICAD_SRC/include/kiid.h"
 cp -p "$PATCHES_DIR/kicad/common/kiid.cpp"                      "$KICAD_SRC/common/kiid.cpp"
 cp -p "$PATCHES_DIR/kicad/kicad/CMakeLists.txt"                 "$KICAD_SRC/kicad/CMakeLists.txt"
+# pcm/panel_packages_view: HandleOnMouseWheel() went private in wxWidgets >= 3.3
+# (Homebrew ships 3.3.3, newer than upstream KiCad's <3.3 pin) - forward the
+# wheel event through the public handler API instead. GUI-only, BUILD_CLI=1
+# still links this file since kicad-cli's pcm subcommand pulls in the library.
+cp -p "$PATCHES_DIR/kicad/pcm/dialogs/panel_packages_view.cpp"  "$KICAD_SRC/kicad/pcm/dialogs/panel_packages_view.cpp"
+# common/swig/{math,wx}.i: PyInt_FromLong/PyString_Check are Python 2 C API
+# calls with no version guard. Older SWIG (<4.1) auto-injected Py2/Py3 compat
+# macros aliasing these to PyLong_FromLong/PyUnicode_Check; SWIG 4.1+ dropped
+# that shim, so pcbnew_wrap.cxx fails to compile against Python 3 headers
+# (BUILD_PCBNEW=1) unless these call sites use the Python 3 names directly.
+cp -p "$PATCHES_DIR/kicad/common/swig/math.i"                   "$KICAD_SRC/common/swig/math.i"
+cp -p "$PATCHES_DIR/kicad/common/swig/wx.i"                     "$KICAD_SRC/common/swig/wx.i"
 cp -p "$PATCHES_DIR/kicad/eeschema/CMakeLists.txt"              "$KICAD_SRC/eeschema/CMakeLists.txt"
 cp -p "$PATCHES_DIR/kicad/pcbnew/CMakeLists.txt"                "$KICAD_SRC/pcbnew/CMakeLists.txt"
 cp -p "$PATCHES_DIR/kicad/pcbnew/router/pns_kicad_iface.cpp"    "$KICAD_SRC/pcbnew/router/pns_kicad_iface.cpp"
@@ -351,6 +363,17 @@ ninja $NINJA_TARGETS
 # Frameworks) resolves to the already-built KiCad.app/Contents/Frameworks.
 # Only runs when BUILD_CLI=1; the -x check also gracefully no-ops on an
 # already-installed CLI-free build tree.
+#
+# NOTE (macOS): on this CMake layout ninja links kicad-cli straight into the
+# bundle (KiCad.app/Contents/MacOS/kicad-cli) rather than at the flat
+# "${BUILD_DIR}/kicad/kicad-cli" path below, so this cp is a no-op here.
+# Do NOT mirror the bundled binary back out to a flat path: kicad-cli run
+# from outside KiCad.app cannot resolve ../PlugIns/_pcbnew.kiface via the
+# normal @executable_path bundle convention (it errors: "Failed to load
+# kiface library"), and KICAD_RUN_FROM_BUILD_DIR=1 does not fix this on this
+# build - it resolves to an unrelated hardcoded absolute path baked into the
+# KiCad source, not this build tree. Run kicad-cli from its real bundle path;
+# tools/datagen/pcbench_prep/kicad_tools.py.kicad_cli() does this.
 # ──────────────────────────────────────────────
 CLI_BUILT="${BUILD_DIR}/kicad/kicad-cli"
 CLI_DEST_DIR="${BUILD_DIR}/kicad/KiCad.app/Contents/MacOS"
