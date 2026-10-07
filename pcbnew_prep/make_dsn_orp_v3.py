@@ -27,6 +27,7 @@ import argparse
 import fnmatch
 import gzip
 import json
+import math
 import re
 import shutil
 import sys
@@ -195,6 +196,17 @@ def _remove_dsn_class_blocks(dsn_content):
     return '\n'.join(result)
 
 
+def _dsn_min_rule(mm):
+    """A minimum width/clearance in DSN units (um) at the DSN's 0.1 um resolution.
+
+    Rounded up, never down: a rule like 0.1524 mm written as 152 um lets the
+    router lay copper below the board's own minimum, and every such track then
+    fails KiCad DRC. round(..., 6) first so float noise (0.2 * 10000 =
+    2000.0000000000002) does not push an exact value up a step.
+    """
+    return f"{math.ceil(round(mm * MM2DSN * 10, 6)) / 10:g}"
+
+
 def build_dsn_classes(net_to_class, class_params, via_name):
     """
     Build DSN class block text from net_to_class + class_params.
@@ -214,8 +226,8 @@ def build_dsn_classes(net_to_class, class_params, via_name):
         trace_w = params.get('trace_width', 0.25)
         clearance = params.get('clearance', 0.2)
 
-        width_dsn = int(round(trace_w * MM2DSN))
-        clear_dsn = int(round(clearance * MM2DSN))
+        width_dsn = _dsn_min_rule(trace_w)
+        clear_dsn = _dsn_min_rule(clearance)
 
         net_tokens = ' '.join(_dsn_net_token(n) for n in sorted(nets))
         lines.append(f'    (class {cls_name} {net_tokens}')
@@ -340,10 +352,10 @@ def verify_dsn_constraints(dsn_content, pro_data):
         m = re.match(r'\(class\s+(\S+)', block)
         cls_name = m.group(1) if m else 'unknown'
 
-        wm = re.search(r'\(width\s+(\d+)\)', block)
-        cm = re.search(r'\(clearance\s+(\d+)\)', block)
-        width_mm = int(wm.group(1)) / MM2DSN if wm else None
-        clear_mm = int(cm.group(1)) / MM2DSN if cm else None
+        wm = re.search(r'\(width\s+([\d.]+)\)', block)
+        cm = re.search(r'\(clearance\s+([\d.]+)\)', block)
+        width_mm = float(wm.group(1)) / MM2DSN if wm else None
+        clear_mm = float(cm.group(1)) / MM2DSN if cm else None
         dsn_classes[cls_name] = {'width_mm': width_mm, 'clearance_mm': clear_mm}
         idx = end
 
